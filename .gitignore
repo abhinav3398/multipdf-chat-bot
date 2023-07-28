@@ -135,6 +135,7 @@ lib/
 lib*/
 pyenv.cfg
 pyvenv.cfg
+Scripts/
 
 
 # Spyder project settings
