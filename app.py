@@ -36,7 +36,7 @@ def get_vectorstore(text_chunks):
     # embeddings = OpenAIEmbeddings()
     embeddings = HuggingFaceInstructEmbeddings(
         model_name="hkunlp/instructor-xl",
-        model_name="intfloat/multilingual-e5-large",
+        # model_name="intfloat/multilingual-e5-large",
         # model_kwargs ={"device": "cuda"},
     )
 
