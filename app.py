@@ -1,12 +1,13 @@
 import streamlit as st
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceInstructEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
+from langchain.chains import ConversationalRetrievalChain, RetrievalQA
+from langchain.document_loaders import PyPDFLoader, DirectoryLoader
 from htmlTemplates import css, bot_template, user_template
 from langchain.llms import HuggingFaceHub
 import openai
@@ -22,13 +23,15 @@ def get_pdf_text(pdf_docs):
 
 
 def get_text_chunks(text):
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
+    # text_splitter = CharacterTextSplitter(
+    #     separator="\n",
+    text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
         length_function=len
     )
-    chunks = text_splitter.split_text(text)
+    # chunks = text_splitter.split_text(text)
+    chunks = text_splitter.split_documents(text)
     return chunks
 
 
@@ -40,7 +43,8 @@ def get_vectorstore(text_chunks):
         # model_kwargs ={"device": "cuda"},
     )
 
-    vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+    # vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+    vectorstore = FAISS.from_documents(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
 
