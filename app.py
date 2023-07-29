@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit_toggle as tog
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
@@ -11,7 +12,7 @@ from langchain.document_loaders import PyPDFLoader, DirectoryLoader
 from htmlTemplates import css, bot_template, user_template
 from langchain.llms import HuggingFaceHub, OpenAI
 import openai
-# openai.api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -22,7 +23,7 @@ def get_pdf_text(pdf_docs):
     return text
 
 def get_documents_itr(docs):
-    return itr(docs)
+    return iter(docs)
 
 def get_text_chunks(text, is_doc_itr=False):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -38,13 +39,15 @@ def get_text_chunks(text, is_doc_itr=False):
     return chunks
 
 
-def get_vectorstore(text_chunks, is_doc_itr=False):
-    # embeddings = OpenAIEmbeddings()
-    embeddings = HuggingFaceInstructEmbeddings(
-        model_name="hkunlp/instructor-xl",
-        # model_name="intfloat/multilingual-e5-large",
-        model_kwargs ={"device": "cpu"},
-    )
+def get_vectorstore(text_chunks, is_doc_itr=False, use_openai=True):
+    if use_openai:
+        embeddings = OpenAIEmbeddings()
+    else:
+        embeddings = HuggingFaceInstructEmbeddings(
+            model_name="hkunlp/instructor-xl",
+            # model_name="intfloat/multilingual-e5-large",
+            model_kwargs ={"device": "cpu"},
+        )
 
     if not is_doc_itr:
         vectorstore = FAISS.from_texts(text_chunks, embedding=embeddings)
@@ -53,13 +56,16 @@ def get_vectorstore(text_chunks, is_doc_itr=False):
     return vectorstore
 
 
-def get_conversation_chain(vectorstore):
-    # llm = ChatOpenAI()
-    llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.9, "max_length":512 })
-
+def get_conversation_chain(vectorstore, use_openai=True):
     memory = ConversationBufferMemory(
         memory_key='chat_history', return_messages=True
     )
+    llm = ChatOpenAI(temperature=0.2)
+    # if use_openai:
+    #     llm = ChatOpenAI(temperature=0.2)
+    # else:
+    #     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.9, "max_length":512 })
+
 
     # conversation_chain = ConversationalRetrievalChain.from_llm(
     conversation_chain = RetrievalQA.from_llm(
@@ -86,7 +92,7 @@ def handle_userinput(user_question):
 def main():
     load_dotenv()
 
-    PARSE_AS_TEXT = True
+    PARSE_AS_TEXT = True # False
 
     st.set_page_config(page_title="Chat with multiple PDFs",
                        page_icon=":books:")
@@ -99,6 +105,18 @@ def main():
 
     st.header("Chat with multiple PDFs :books:")
     user_question = st.text_input("Ask a question about your documents:")
+
+    # USE_OPRNAI = st.select_slider("use OpenAI", ["OpenAI", "HuggingFace"]) == "OpenAI"
+    # USE_OPRNAI = st_toggleswitch("use: HuggingFace or OpenAI ")
+    USE_OPRNAI = tog.st_toggle_switch(label="use OpenAI(set at the start of the conversation) or HuggingFace's Instructor-XL",
+                    key="Key1",
+                    default_value=True,
+                    label_after = True,
+                    inactive_color = '#D3D3D3',
+                    active_color="#11567f",
+                    track_color="#29B5E8"
+                    )
+
     if user_question:
         handle_userinput(user_question)
 
@@ -117,10 +135,10 @@ def main():
                 text_chunks = get_text_chunks(raw_text, is_doc_itr=(not PARSE_AS_TEXT))
 
                 # create vector store
-                vectorstore = get_vectorstore(text_chunks, is_doc_itr=(not PARSE_AS_TEXT))
+                vectorstore = get_vectorstore(text_chunks, is_doc_itr=(not PARSE_AS_TEXT), use_openai=USE_OPRNAI)
 
                 # create conversation chain
-                st.session_state.conversation = get_conversation_chain(vectorstore)
+                st.session_state.conversation = get_conversation_chain(vectorstore, use_openai=USE_OPRNAI)
 
 
 if __name__ == '__main__':
