@@ -61,4 +61,4 @@ TODO
 
 ## License
 -------
-The MultiPDF Chat App is released under the [MIT License](https://opensource.org/licenses/MIT).
+The MultiPDF Chat App is released under the [BSD Licence](./LICENCE).
