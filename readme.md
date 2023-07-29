@@ -61,4 +61,4 @@ TODO
 
 ## License
 -------
-The MultiPDF Chat App is released under the [BSD Licence](./LICENCE).
+The MultiPDF Chat App is released under the [BSD Licence](./LICENSE).
