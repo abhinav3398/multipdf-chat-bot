@@ -121,6 +121,7 @@ celerybeat.pid
 
 # Environments
 .env
+secrets.toml
 .venv
 env/
 venv/
@@ -147,6 +148,7 @@ Scripts/
 
 # mkdocs documentation
 /site
+.streamlit/
 
 # mypy
 .mypy_cache/
