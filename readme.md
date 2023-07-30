@@ -38,6 +38,12 @@ To install the MultiPDF Chat App, please follow these steps:
 OPENAI_API_KEY=your_secrit_api_key
 ```
 
+4. **OPTIONALLY** if you think that openapi's chatgpt bot is efficient, you can also try a better model available by huggingface(hkunlp/instructor-xl) in this app and to use it, simillar to previous step, obtain an API key from HiggingFace and add it to the `.env` file in the project directory.
+- also you might need a good hardware (a goof gpu, and a good cpu) since we'll be creating our own embeddings on our own system.
+```commandline
+HUGGINGFACEHUB_API_TOKEN=your_secrit_api_key
+```
+
 ## Usage
 -----
 To use the MultiPDF Chat App, follow these steps:

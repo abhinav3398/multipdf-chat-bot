@@ -121,6 +121,7 @@ celerybeat.pid
 
 # Environments
 .env
+secrets.toml
 .venv
 env/
 venv/
@@ -135,6 +136,7 @@ lib/
 lib*/
 pyenv.cfg
 pyvenv.cfg
+Scripts/
 
 
 # Spyder project settings
@@ -146,6 +148,7 @@ pyvenv.cfg
 
 # mkdocs documentation
 /site
+.streamlit/
 
 # mypy
 .mypy_cache/
