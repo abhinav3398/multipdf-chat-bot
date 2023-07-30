@@ -109,7 +109,7 @@ def main():
     user_question = st.text_input("Ask a question about your documents:")
 
     # USE_OPRNAI = True
-    USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI embeddings(set at the start of the conversation) to use HuggingFace's Instructor-XL embedding",
+    USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI embeddings(set at the start of the conversation) or use HuggingFace's Instructor-XL embedding",
                     key="Key1",
                     default_value=True,
                     label_after = True,
