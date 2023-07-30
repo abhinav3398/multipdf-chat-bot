@@ -109,15 +109,15 @@ def main():
     st.header("Chat with multiple PDFs :books:")
     user_question = st.text_input("Ask a question about your documents:")
 
-    USE_OPRNAI = True
-    # USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI(set at the start of the conversation) or HuggingFace's Instructor-XL",
-    #                 key="Key1",
-    #                 default_value=True,
-    #                 label_after = True,
-    #                 inactive_color = '#D3D3D3',
-    #                 active_color="#11567f",
-    #                 track_color="#29B5E8"
-    #                 )
+    # USE_OPRNAI = True
+    USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI embeddings(set at the start of the conversation) to use HuggingFace's Instructor-XL embedding",
+                    key="Key1",
+                    default_value=True,
+                    label_after = True,
+                    inactive_color = '#D3D3D3',
+                    active_color="#11567f",
+                    track_color="#29B5E8"
+                    )
 
     if user_question:
         handle_userinput(user_question)
