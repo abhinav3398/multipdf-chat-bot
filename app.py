@@ -1,25 +1,54 @@
+from dotenv import load_dotenv
+import requests
+import pandas as pd
+from PyPDF2 import PdfReader
+from htmlTemplates import css, bot_template, user_template
 import streamlit as st
 import streamlit_toggle as tog
-from dotenv import load_dotenv
-from PyPDF2 import PdfReader
+import torch
+
 from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings, HuggingFaceInstructEmbeddings
+from langchain.embeddings.huggingface_hub import HuggingFaceHubEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain, RetrievalQA
 from langchain.document_loaders import PyPDFLoader, DirectoryLoader
-from htmlTemplates import css, bot_template, user_template
-from langchain.llms import HuggingFaceHub, OpenAI
+from langchain.llms import OpenAI
+# from langchain.llms import HuggingFaceHub
+from langchain import HuggingFaceHub, LLMChain
+from langchain.prompts import PromptTemplate
+# from transformers import AutoTokenizer, AutoModel
+from huggingface_hub import InferenceClient
+from huggingface_hub.inference_api import InferenceApi
 import openai
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# EMBEDDING_MODEL_ID = "hkunlp/instructor-xl"
+EMBEDDING_MODEL_ID = "thenlper/gte-large"
+
+def query(texts):
+    API_URL = api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBEDDING_MODEL_ID}"
+    # HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
+    response = requests.post(API_URL, headers=HEADERS, json={"inputs": texts, "options":{"wait_for_model":True}})
+    return response.json()
+
+def get_embeddings(texts):
+    output = query(texts)
+    embeddings = pd.DataFrame(output)
+    print(embeddings)
+    return embeddings
 
 def get_pdf_text(pdf_docs):
-    text = ""
+    text = "here's a document:\n"
     for pdf in pdf_docs:
         pdf_reader = PdfReader(pdf)
         for page in pdf_reader.pages:
             text += page.extract_text()
+        text+="\nhere's another document:\n"
+
+    text = text[:-26]
     return text
 
 def get_documents_itr(docs):
@@ -40,14 +69,7 @@ def get_text_chunks(text, is_doc_itr=False):
 
 
 def get_vectorstore(text_chunks, is_doc_itr=False, use_openai=True):
-    if use_openai:
-        embeddings = OpenAIEmbeddings()
-    else:
-        embeddings = HuggingFaceInstructEmbeddings(
-            model_name="hkunlp/instructor-xl",
-            # model_name="intfloat/multilingual-e5-large",
-            model_kwargs ={"device": "cpu"},
-        )
+    embeddings = get_embeddings(text_chunks)
 
     if not is_doc_itr:
         vectorstore = FAISS.from_texts(text_chunks, embedding=embeddings)
@@ -55,17 +77,15 @@ def get_vectorstore(text_chunks, is_doc_itr=False, use_openai=True):
         vectorstore = FAISS.from_documents(text_chunks, embedding=embeddings)
     return vectorstore
 
-
 def get_conversation_chain(vectorstore, use_openai=True):
     memory = ConversationBufferMemory(
         memory_key='chat_history', return_messages=True
     )
-    llm = ChatOpenAI(model_name='gpt-3.5-turbo', temperature=0.2)
-    # llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
+    llm = ChatOpenAI(temperature=0.2)
     # if use_openai:
     #     llm = ChatOpenAI(temperature=0.2)
     # else:
-    #     llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.9, "max_length":512 })
+    #     llm = HuggingFaceHub(repo_id="stabilityai/StableBeluga2", model_kwargs={"temperature":0.2, "max_length":512 })
 
 
     # conversation_chain = ConversationalRetrievalChain.from_llm(
@@ -109,7 +129,7 @@ def main():
     st.header("Chat with multiple PDFs :books:")
     user_question = st.text_input("Ask a question about your documents:")
 
-    USE_OPRNAI = True
+    USE_OPRNAI = False
     # USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI embeddings(set at the start of the conversation) or use HuggingFace's Instructor-XL embedding",
     #                 key="Key1",
     #                 default_value=True,
@@ -135,6 +155,7 @@ def main():
 
                 # get the text chunks
                 text_chunks = get_text_chunks(raw_text, is_doc_itr=(not PARSE_AS_TEXT))
+                # st.session_state.text_chunks = get_text_chunks(raw_text, is_doc_itr=(not PARSE_AS_TEXT))
 
                 # create vector store
                 vectorstore = get_vectorstore(text_chunks, is_doc_itr=(not PARSE_AS_TEXT), use_openai=USE_OPRNAI)
