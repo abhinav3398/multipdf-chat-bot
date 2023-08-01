@@ -78,7 +78,7 @@ def get_conversation_chain(vectorstore, use_openai=True):
 
 
 def handle_userinput(user_question):
-    response = st.session_state.system_conversation({'query': user_question})
+    response = st.session_state.conversation({'query': user_question})
     st.session_state.chat_history = response['chat_history']
     chat_history = st.session_state.chat_history
     chat_history.reverse()
@@ -108,6 +108,8 @@ def main():
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
+    if "target_doc_text" not in st.session_state:
+        st.session_state.target_doc_text = ""
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = None
 
@@ -124,17 +126,25 @@ def main():
     #                 track_color="#29B5E8"
     #                 )
 
+    instruction = "given all the documents except TARGET_DOCUMENT, compare those documents with the TARGET_DOCUMENT and show the top 2 documents that are similar to the TARGET_DOCUMENT and explain your reasoning as well."
+    instruction += "\nTARGET_DOCUMENT:\n"
     if user_question:
         handle_userinput(user_question)
+    if "target_doc_text" in st.session_state and st.session_state.target_doc_text and len(st.session_state.target_doc_text) > 0:
+        print(st.session_state.target_doc_text)
+        handle_system_input(instruction+st.session_state.target_doc_text)
+        st.session_state.target_doc_text = ""
 
-    global raw_text
-    raw_text = []
     with st.sidebar:
         st.subheader("Your documents")
         pdf_docs = st.file_uploader(
             "Upload your PDFs here and click on 'Process'", accept_multiple_files=True, type = [".pdf"],
         )
-        if st.button("Process"):
+        if pdf_docs:
+            pdf_docs_to_compare = st.file_uploader(
+                "Upload your target PDF that you want to be matched with the above pdfs, here and click on 'Process'", accept_multiple_files=False, type = [".pdf"],
+            )
+        if st.button("Process") and pdf_docs:
             with st.spinner("Processing"):
                 # get pdf text
                 # get_documents_itr
@@ -149,26 +159,9 @@ def main():
                 # create conversation chain
                 st.session_state.conversation = get_conversation_chain(vectorstore, use_openai=USE_OPRNAI)
 
-        if raw_text:
-            pdf_docs_to_compare = st.file_uploader(
-                "Upload your PDF that you want to be matched with the above pdfs, here and click on 'Process'", accept_multiple_files=False, type = [".pdf"],
-            )
-            if st.button("Process & Compare"):
-                with st.spinner("Processing"):
+                if pdf_docs_to_compare and len(raw_text) != 0:
                     # get pdf text
-                    raw_text2 = get_pdf_text([pdf_docs_to_compare]) if PARSE_AS_TEXT else get_documents_itr(pdf_docs_to_compare)
-                    raw_text2 = raw_text + ["\nTARGET_DOCUMENT: \n"] + raw_text2
-
-                    # get the text chunks
-                    text_chunks2 = get_text_chunks(raw_text2, is_doc_itr=(not PARSE_AS_TEXT))
-
-                    # create vector store
-                    vectorstore = get_vectorstore(text_chunks2, is_doc_itr=(not PARSE_AS_TEXT), use_openai=USE_OPRNAI)
-
-                    st.session_state.system_conversation = get_conversation_chain(vectorstore, use_openai=USE_OPRNAI)
-                    handle_system_input("given all the documents except TARGET_DOCUMENT, compare those documents with the TARGET_DOCUMENT and show the top 2 documents that are similar to the TARGET_DOCUMENT and explain your reasoning as well")
-
-
+                    st.session_state.target_doc_text = get_pdf_text([pdf_docs_to_compare]) if PARSE_AS_TEXT else get_documents_itr([pdf_docs_to_compare])
 
 
 if __name__ == '__main__':
