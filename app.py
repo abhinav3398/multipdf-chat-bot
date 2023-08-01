@@ -12,7 +12,7 @@ from langchain.document_loaders import PyPDFLoader, DirectoryLoader
 from htmlTemplates import css, bot_template, user_template
 from langchain.llms import HuggingFaceHub, OpenAI
 import openai
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -27,8 +27,8 @@ def get_documents_itr(docs):
 
 def get_text_chunks(text, is_doc_itr=False):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=512,
+        chunk_overlap=128,
         length_function=len
     )
     if not is_doc_itr:
@@ -78,7 +78,7 @@ def get_conversation_chain(vectorstore, use_openai=True):
 
 
 def handle_userinput(user_question):
-    response = st.session_state.conversation({'query': user_question})
+    response = st.session_state.system_conversation({'query': user_question})
     st.session_state.chat_history = response['chat_history']
     chat_history = st.session_state.chat_history
     chat_history.reverse()
@@ -91,6 +91,11 @@ def handle_userinput(user_question):
             st.write(bot_template.replace(
                 "{{MSG}}", message.content), unsafe_allow_html=True)
 
+def handle_system_input(user_question):
+    response = st.session_state.conversation({'query': user_question})
+    evalution = response['chat_history'][-1]
+    st.write(bot_template.replace(
+        "{{MSG}}", evalution.content), unsafe_allow_html=True)
 
 def main():
     load_dotenv()
@@ -122,6 +127,8 @@ def main():
     if user_question:
         handle_userinput(user_question)
 
+    global raw_text
+    raw_text = []
     with st.sidebar:
         st.subheader("Your documents")
         pdf_docs = st.file_uploader(
@@ -141,6 +148,27 @@ def main():
 
                 # create conversation chain
                 st.session_state.conversation = get_conversation_chain(vectorstore, use_openai=USE_OPRNAI)
+
+        if raw_text:
+            pdf_docs_to_compare = st.file_uploader(
+                "Upload your PDF that you want to be matched with the above pdfs, here and click on 'Process'", accept_multiple_files=False, type = [".pdf"],
+            )
+            if st.button("Process & Compare"):
+                with st.spinner("Processing"):
+                    # get pdf text
+                    raw_text2 = get_pdf_text([pdf_docs_to_compare]) if PARSE_AS_TEXT else get_documents_itr(pdf_docs_to_compare)
+                    raw_text2 = raw_text + ["\nTARGET_DOCUMENT: \n"] + raw_text2
+
+                    # get the text chunks
+                    text_chunks2 = get_text_chunks(raw_text2, is_doc_itr=(not PARSE_AS_TEXT))
+
+                    # create vector store
+                    vectorstore = get_vectorstore(text_chunks2, is_doc_itr=(not PARSE_AS_TEXT), use_openai=USE_OPRNAI)
+
+                    st.session_state.system_conversation = get_conversation_chain(vectorstore, use_openai=USE_OPRNAI)
+                    handle_system_input("given all the documents except TARGET_DOCUMENT, compare those documents with the TARGET_DOCUMENT and show the top 2 documents that are similar to the TARGET_DOCUMENT and explain your reasoning as well")
+
+
 
 
 if __name__ == '__main__':
