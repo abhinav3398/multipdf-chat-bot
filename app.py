@@ -60,7 +60,8 @@ def get_conversation_chain(vectorstore, use_openai=True):
     memory = ConversationBufferMemory(
         memory_key='chat_history', return_messages=True
     )
-    llm = ChatOpenAI(temperature=0.2)
+    llm = ChatOpenAI(model_name='gpt-3.5-turbo', temperature=0.2)
+    # llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
     # if use_openai:
     #     llm = ChatOpenAI(temperature=0.2)
     # else:
@@ -79,8 +80,10 @@ def get_conversation_chain(vectorstore, use_openai=True):
 def handle_userinput(user_question):
     response = st.session_state.conversation({'query': user_question})
     st.session_state.chat_history = response['chat_history']
+    chat_history = st.session_state.chat_history
+    chat_history.reverse()
 
-    for i, message in enumerate(st.session_state.chat_history):
+    for i, message in enumerate(chat_history):
         if i % 2 == 0:
             st.write(user_template.replace(
                 "{{MSG}}", message.content), unsafe_allow_html=True)
@@ -106,16 +109,15 @@ def main():
     st.header("Chat with multiple PDFs :books:")
     user_question = st.text_input("Ask a question about your documents:")
 
-    # USE_OPRNAI = st.select_slider("use OpenAI", ["OpenAI", "HuggingFace"]) == "OpenAI"
-    # USE_OPRNAI = st_toggleswitch("use: HuggingFace or OpenAI ")
-    USE_OPRNAI = tog.st_toggle_switch(label="use OpenAI(set at the start of the conversation) or HuggingFace's Instructor-XL",
-                    key="Key1",
-                    default_value=True,
-                    label_after = True,
-                    inactive_color = '#D3D3D3',
-                    active_color="#11567f",
-                    track_color="#29B5E8"
-                    )
+    USE_OPRNAI = True
+    # USE_OPRNAI = tog.st_toggle_switch(label="**[experimental]** use OpenAI embeddings(set at the start of the conversation) or use HuggingFace's Instructor-XL embedding",
+    #                 key="Key1",
+    #                 default_value=True,
+    #                 label_after = True,
+    #                 inactive_color = '#D3D3D3',
+    #                 active_color="#11567f",
+    #                 track_color="#29B5E8"
+    #                 )
 
     if user_question:
         handle_userinput(user_question)
